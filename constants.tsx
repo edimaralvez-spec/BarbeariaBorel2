@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Service, Barber } from './types';
-import { Scissors, Zap, User, Clock, CheckCircle, Calendar, ChevronRight, LayoutDashboard, FileText, LogOut, Phone } from 'lucide-react';
+import { Scissors, Zap, User, Clock, CheckCircle, Calendar, ChevronRight, LayoutDashboard, FileText, LogOut, Phone, MapPin, Instagram, MessageCircle } from 'lucide-react';
 
 export const SERVICES: Service[] = [
   { id: '1', name: 'Corte Social', price: 45, duration: 40 },
@@ -15,11 +15,11 @@ export const BARBERS: Barber[] = [
   { id: 'b1', name: 'Borel (Proprietário)', avatar: 'https://picsum.photos/id/64/100/100', specialty: 'Mestre em Tesoura' },
 ];
 
-export const COLORS = {
-  primary: '#D4AF37', // Gold
-  secondary: '#1A1A1A', // Dark Gray
-  bg: '#0C0C0C', // Black
-  text: '#E5E5E5',
+export const BUSINESS_INFO = {
+  address: 'Rua Principal, 123 - Centro, São Paulo',
+  hours: 'Seg - Sáb: 09:00 às 19:00',
+  phone: '(11) 99999-9999',
+  instagram: '@barbeariaborel'
 };
 
 export const ICONS = {
@@ -34,6 +34,9 @@ export const ICONS = {
   Reports: <FileText className="w-5 h-5" />,
   Logout: <LogOut className="w-5 h-5" />,
   Phone: <Phone className="w-5 h-5" />,
+  MapPin: <MapPin className="w-4 h-4" />,
+  Instagram: <Instagram className="w-4 h-4" />,
+  WhatsApp: <MessageCircle className="w-4 h-4" />,
 };
 
-export const BUSINESS_PHONE = '5511999999999'; // Número fictício do Borel
+export const BUSINESS_PHONE = '5511999999999';
