@@ -16,10 +16,11 @@ export const BARBERS: Barber[] = [
 ];
 
 export const BUSINESS_INFO = {
-  address: 'Rua Principal, 123 - Centro, São Paulo',
+  address: 'Av. das Nações, Centro - Cerejeiras, RO',
   hours: 'Seg - Sáb: 09:00 às 19:00',
-  phone: '(11) 99999-9999',
-  instagram: '@barbeariaborel'
+  phone: '(69) 99379-5976',
+  instagram: 'https://www.instagram.com/borelbarbearia?igsh=ZDdrcml0cWdvcjVv',
+  instagramHandle: '@borelbarbearia'
 };
 
 export const ICONS = {
@@ -39,4 +40,4 @@ export const ICONS = {
   WhatsApp: <MessageCircle className="w-4 h-4" />,
 };
 
-export const BUSINESS_PHONE = '5511999999999';
+export const BUSINESS_PHONE = '5569993795976';

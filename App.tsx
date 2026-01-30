@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Layout from './components/Layout';
 import BookingFlow from './components/BookingFlow';
 import AdminPanel from './components/AdminPanel';
-import { ICONS, SERVICES, BUSINESS_INFO } from './constants';
+import { ICONS, SERVICES, BUSINESS_INFO, BUSINESS_PHONE } from './constants';
 
 const LandingPage: React.FC<{ onStartBooking: () => void }> = ({ onStartBooking }) => (
   <div className="animate-in fade-in duration-1000">
@@ -99,10 +99,20 @@ const LandingPage: React.FC<{ onStartBooking: () => void }> = ({ onStartBooking 
         </div>
 
         <div className="grid grid-cols-2 gap-4 pt-4 relative z-10">
-          <a href="#" className="flex items-center justify-center gap-3 py-4 bg-black/50 border border-white/5 rounded-2xl text-[10px] uppercase font-bold tracking-widest hover:bg-[#D4AF37] hover:text-black transition-all duration-300">
+          <a 
+            href={BUSINESS_INFO.instagram} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-3 py-4 bg-black/50 border border-white/5 rounded-2xl text-[10px] uppercase font-bold tracking-widest hover:bg-[#D4AF37] hover:text-black transition-all duration-300"
+          >
             {ICONS.Instagram} Instagram
           </a>
-          <a href="#" className="flex items-center justify-center gap-3 py-4 bg-black/50 border border-white/5 rounded-2xl text-[10px] uppercase font-bold tracking-widest hover:bg-[#D4AF37] hover:text-black transition-all duration-300">
+          <a 
+            href={`https://wa.me/${BUSINESS_PHONE}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-3 py-4 bg-black/50 border border-white/5 rounded-2xl text-[10px] uppercase font-bold tracking-widest hover:bg-[#D4AF37] hover:text-black transition-all duration-300"
+          >
             {ICONS.WhatsApp} Contato
           </a>
         </div>
@@ -116,9 +126,15 @@ const App: React.FC = () => {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoggingIn(true);
+    
+    // Simulação de delay de rede para autenticação "Cloud"
+    await new Promise(r => setTimeout(r, 1000));
+
     if (adminPassword === 'borel123') {
       setIsAdminLoggedIn(true);
       setView('admin');
@@ -127,6 +143,7 @@ const App: React.FC = () => {
     } else {
       alert('Senha incorreta!');
     }
+    setIsLoggingIn(false);
   };
 
   const resetView = () => {
@@ -156,30 +173,57 @@ const App: React.FC = () => {
       )}
 
       {showAdminLogin && (
-        <div className="flex flex-col items-center justify-center pt-20 space-y-8 animate-in zoom-in-95 duration-500 p-8">
-          <div className="w-24 h-24 bg-black border border-[#D4AF37]/20 rounded-full flex items-center justify-center text-[#D4AF37] shadow-[0_0_30px_rgba(212,175,55,0.1)]">
-            <span className="scale-150">{ICONS.Dashboard}</span>
-          </div>
-          <div className="text-center space-y-2">
-            <h3 className="text-2xl font-display font-bold text-white italic">Acesso Restrito</h3>
-            <p className="text-[10px] text-neutral-600 uppercase tracking-[0.3em]">Ambiente Administrativo Borel</p>
-          </div>
-          <form onSubmit={handleAdminLogin} className="w-full space-y-5">
-            <input 
-              type="password" 
-              placeholder="SENHA DE ACESSO"
-              className="w-full bg-[#121212] border border-white/10 rounded-2xl p-5 text-white placeholder:text-neutral-800 focus:border-[#D4AF37] focus:outline-none transition-all text-center tracking-[0.5em]"
-              autoFocus
-              value={adminPassword}
-              onChange={e => setAdminPassword(e.target.value)}
-            />
-            <button type="submit" className="w-full bg-gradient-to-r from-[#D4AF37] to-[#B8962E] text-black font-black py-5 rounded-2xl shadow-xl uppercase text-xs tracking-[0.2em] hover:brightness-110 active:scale-95 transition-all">
-              Autenticar
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
+          <div className="w-full max-w-sm space-y-8">
+            <div className="text-center space-y-3">
+              <div className="w-16 h-16 bg-[#D4AF37] rounded-3xl mx-auto flex items-center justify-center text-black shadow-2xl shadow-[#D4AF37]/20 rotate-12">
+                {ICONS.Dashboard}
+              </div>
+              <h3 className="text-2xl font-display font-black text-premium-gold italic">Portal de Gestão</h3>
+              <p className="text-[10px] text-neutral-500 uppercase tracking-[0.4em] font-bold">Barbearia Borel Cloud</p>
+            </div>
+
+            <div className="bg-[#121212] border border-white/10 rounded-[32px] p-8 shadow-2xl space-y-6">
+              <form onSubmit={handleAdminLogin} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] uppercase font-black text-neutral-600 tracking-widest ml-1">Senha de acesso</label>
+                  <input 
+                    type="password" 
+                    placeholder="••••••••"
+                    className="w-full bg-black/50 border border-white/5 rounded-2xl p-5 text-white placeholder:text-neutral-800 focus:border-[#D4AF37] focus:outline-none transition-all text-center tracking-[0.5em] text-lg"
+                    autoFocus
+                    value={adminPassword}
+                    onChange={e => setAdminPassword(e.target.value)}
+                  />
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={isLoggingIn}
+                  className="w-full bg-white text-black font-black py-5 rounded-2xl shadow-xl uppercase text-[10px] tracking-widest hover:bg-[#D4AF37] active:scale-95 transition-all flex items-center justify-center"
+                >
+                  {isLoggingIn ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" /> : 'Entrar no Sistema'}
+                </button>
+              </form>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div>
+                <div className="relative flex justify-center text-[8px] uppercase font-black text-neutral-700 tracking-[0.3em] bg-[#121212] px-4">Ou</div>
+              </div>
+
+              <button className="w-full bg-black border border-white/5 text-neutral-400 font-bold py-4 rounded-2xl text-[9px] uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-white/5 hover:text-white transition-all">
+                <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1V11.1Z"/></svg>
+                Entrar com Google
+              </button>
+            </div>
+
+            <button 
+              type="button" 
+              onClick={() => setShowAdminLogin(false)} 
+              className="w-full text-neutral-600 text-[9px] font-bold uppercase tracking-[0.4em] py-2 hover:text-white transition-colors"
+            >
+              Voltar ao Início
             </button>
-            <button type="button" onClick={() => setShowAdminLogin(false)} className="w-full text-neutral-600 text-[10px] font-bold uppercase tracking-[0.4em] py-2 hover:text-white transition-colors">
-              Cancelar
-            </button>
-          </form>
+          </div>
         </div>
       )}
 

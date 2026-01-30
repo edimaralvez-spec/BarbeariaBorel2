@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { storageService } from '../services/storageService';
-import { ICONS, SERVICES, BARBERS } from '../constants';
+import { ICONS, SERVICES, BARBERS, BUSINESS_INFO } from '../constants';
 import { Appointment } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { GoogleGenAI } from "@google/genai";
 
 interface ClientSummary {
   name: string;
@@ -15,11 +16,34 @@ interface ClientSummary {
 }
 
 const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'clientes'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'clientes' | 'marketing'>('dashboard');
   const [filter, setFilter] = useState<'hoje' | 'semana' | 'mes'>('hoje');
   const [selectedClient, setSelectedClient] = useState<ClientSummary | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
   
   const appointments = storageService.getAppointments();
+
+  const generateCaptions = async () => {
+    setIsGenerating(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Gere 3 legendas curtas e atraentes para o Instagram de uma barbearia premium chamada Barbearia Borel, localizada em Cerejeiras-RO. 
+        O tom deve ser sofisticado e focado no homem moderno. Use emojis de barbearia e hashtags locais. 
+        Retorne apenas as 3 opções separadas por '---'.`,
+      });
+      
+      const text = response.text || "";
+      setAiSuggestions(text.split('---').map(s => s.trim()).filter(Boolean));
+    } catch (error) {
+      console.error("Erro ao gerar legendas:", error);
+      setAiSuggestions(["Erro ao conectar com a IA. Tente novamente."]);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const filteredAppointments = useMemo(() => {
     const now = new Date();
@@ -97,12 +121,18 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          {ICONS.Dashboard} Painel Administrativo
-        </h2>
+        <div className="flex flex-col">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            {ICONS.Dashboard} Painel de Controle
+          </h2>
+          <div className="flex items-center gap-1.5 text-[9px] text-green-500 font-bold uppercase tracking-widest mt-0.5">
+            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+            Cloud Sync Active
+          </div>
+        </div>
         <button 
           onClick={onLogout}
-          className="text-red-500 p-2 hover:bg-red-500/10 rounded-full transition-colors"
+          className="text-neutral-500 p-2 hover:bg-red-500/10 hover:text-red-500 rounded-full transition-all"
         >
           {ICONS.Logout}
         </button>
@@ -110,18 +140,15 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
       {/* Main Tabs */}
       <div className="flex border-b border-white/5">
-        <button 
-          onClick={() => setActiveTab('dashboard')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-[#D4AF37] text-[#D4AF37]' : 'border-transparent text-neutral-500'}`}
-        >
-          Resumo
-        </button>
-        <button 
-          onClick={() => setActiveTab('clientes')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === 'clientes' ? 'border-[#D4AF37] text-[#D4AF37]' : 'border-transparent text-neutral-500'}`}
-        >
-          Clientes
-        </button>
+        {(['dashboard', 'clientes', 'marketing'] as const).map(tab => (
+          <button 
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-all ${activeTab === tab ? 'border-[#D4AF37] text-[#D4AF37]' : 'border-transparent text-neutral-500'}`}
+          >
+            {tab === 'dashboard' ? 'Resumo' : tab === 'clientes' ? 'Clientes' : 'Marketing IA'}
+          </button>
+        ))}
       </div>
 
       {activeTab === 'dashboard' && (
@@ -304,6 +331,59 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'marketing' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="bg-gradient-to-br from-[#1A1A1A] to-[#0C0C0C] p-6 rounded-3xl border border-[#D4AF37]/20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
+            <div className="relative z-10 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#D4AF37] rounded-xl flex items-center justify-center text-black">
+                  {ICONS.Zap}
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-white text-lg">Marketing Borel AI</h3>
+                  <p className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-widest">Powered by Gemini 3.0</p>
+                </div>
+              </div>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Gere legendas criativas e exclusivas para o seu Instagram com foco em Cerejeiras-RO utilizando nossa inteligência artificial.
+              </p>
+              <button 
+                onClick={generateCaptions}
+                disabled={isGenerating}
+                className="w-full bg-white text-black font-black py-4 rounded-2xl uppercase text-[10px] tracking-widest hover:bg-[#D4AF37] transition-all disabled:opacity-50"
+              >
+                {isGenerating ? 'Analisando tendências...' : 'Gerar Novas Legendas'}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em] px-1">Sugestões Estratégicas</h4>
+            {aiSuggestions.length === 0 ? (
+              <div className="p-10 text-center text-neutral-700 italic text-sm border-2 border-dashed border-white/5 rounded-3xl">
+                Clique no botão acima para começar a sua campanha.
+              </div>
+            ) : (
+              aiSuggestions.map((suggestion, idx) => (
+                <div key={idx} className="bg-[#121212] p-5 rounded-2xl border border-white/5 space-y-3 group hover:border-[#D4AF37]/30 transition-all">
+                  <p className="text-sm text-neutral-300 leading-relaxed italic">"{suggestion}"</p>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(suggestion);
+                      alert('Legenda copiada!');
+                    }}
+                    className="flex items-center gap-2 text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest group-hover:underline"
+                  >
+                    Copiar para Instagram
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
