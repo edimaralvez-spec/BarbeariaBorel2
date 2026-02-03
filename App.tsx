@@ -49,7 +49,7 @@ const LandingPage: React.FC<{ onStartBooking: () => void }> = ({ onStartBooking 
       <section className="space-y-8 pt-4">
         <div className="text-center space-y-2">
           <h2 className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-[0.4em]">Experiências</h2>
-          <p className="text-3xl font-display font-bold text-white italic">Nossa Carta de Serviços</p>
+          <p className="text-3xl font-display font-bold text-white italic"> Serviços</p>
           <div className="w-12 h-1 bg-[#D4AF37] mx-auto rounded-full"></div>
         </div>
         <div className="grid gap-4">
