@@ -245,7 +245,7 @@ const App: React.FC = () => {
           <div className="space-y-3">
             <h2 className="text-4xl font-display font-black text-premium-gold italic">Confirmado!</h2>
             <p className="text-neutral-500 text-sm font-light max-w-[280px] leading-relaxed mx-auto">
-              Sua presença foi registrada em nossa agenda premium. O Borel já está preparando tudo para sua chegada.
+              Sua presença foi registrada em nossa agenda premium. Gerfferson já está preparando tudo para sua chegada.
             </p>
           </div>
           

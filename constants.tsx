@@ -12,7 +12,7 @@ export const SERVICES: Service[] = [
 ];
 
 export const BARBERS: Barber[] = [
-  { id: 'b1', name: 'Borel (Proprietário)', avatar: 'https://picsum.photos/id/64/100/100', specialty: 'Mestre em Tesoura' },
+  { id: 'b1', name: 'Gerfferson', avatar: 'https://picsum.photos/id/64/100/100', specialty: 'Mestre em Tesoura' },
 ];
 
 export const BUSINESS_INFO = {
