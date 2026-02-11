@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import BookingFlow from './components/BookingFlow';
 import AdminPanel from './components/AdminPanel';
+import { storageService } from './services/storageService';
 import { ICONS, SERVICES, BUSINESS_INFO, BUSINESS_PHONE } from './constants';
 
 const LandingPage: React.FC<{ onStartBooking: () => void }> = ({ onStartBooking }) => (
@@ -124,24 +125,33 @@ const LandingPage: React.FC<{ onStartBooking: () => void }> = ({ onStartBooking 
 const App: React.FC = () => {
   const [view, setView] = useState<'landing' | 'booking' | 'admin' | 'success'>('landing');
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [adminUser, setAdminUser] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState(false);
+
+  // Garantir que o SuperAdmin exista no banco ao iniciar
+  useEffect(() => {
+    storageService.ensureSuperAdmin();
+  }, []);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError(false);
     setIsLoggingIn(true);
     
-    // Simulação de delay de rede para autenticação "Cloud"
-    await new Promise(r => setTimeout(r, 1000));
+    // Autenticação Real via Firebase (Usando as strings exatas para Admin / Admin123)
+    const isValid = await storageService.verifyAdminCredentials(adminUser.trim(), adminPassword);
 
-    if (adminPassword === 'borel123') {
+    if (isValid) {
       setIsAdminLoggedIn(true);
       setView('admin');
       setShowAdminLogin(false);
       setAdminPassword('');
+      setAdminUser('');
     } else {
-      alert('Senha incorreta!');
+      setLoginError(true);
     }
     setIsLoggingIn(false);
   };
@@ -180,26 +190,57 @@ const App: React.FC = () => {
                 {ICONS.Dashboard}
               </div>
               <h3 className="text-2xl font-display font-black text-premium-gold italic">Portal de Gestão</h3>
-              <p className="text-[10px] text-neutral-500 uppercase tracking-[0.4em] font-bold">Barbearia Borel Cloud</p>
+              <p className="text-[10px] text-neutral-500 uppercase tracking-[0.4em] font-bold">Autenticação Cloud</p>
             </div>
 
             <div className="bg-[#121212] border border-white/10 rounded-[32px] p-8 shadow-2xl space-y-6">
               <form onSubmit={handleAdminLogin} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-[9px] uppercase font-black text-neutral-600 tracking-widest ml-1">Senha de acesso</label>
-                  <input 
-                    type="password" 
-                    placeholder="••••••••"
-                    className="w-full bg-black/50 border border-white/5 rounded-2xl p-5 text-white placeholder:text-neutral-800 focus:border-[#D4AF37] focus:outline-none transition-all text-center tracking-[0.5em] text-lg"
-                    autoFocus
-                    value={adminPassword}
-                    onChange={e => setAdminPassword(e.target.value)}
-                  />
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] uppercase font-black text-neutral-600 tracking-widest ml-1">Usuário</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600">{ICONS.User}</span>
+                      <input 
+                        type="text" 
+                        placeholder="Nome de acesso"
+                        className={`w-full bg-black/50 border ${loginError ? 'border-red-500/50' : 'border-white/5'} rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-neutral-800 focus:border-[#D4AF37] focus:outline-none transition-all text-sm`}
+                        autoFocus
+                        value={adminUser}
+                        onChange={e => {
+                          setAdminUser(e.target.value);
+                          setLoginError(false);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] uppercase font-black text-neutral-600 tracking-widest ml-1">Senha de acesso</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600">{ICONS.Zap}</span>
+                      <input 
+                        type="password" 
+                        placeholder="••••••••"
+                        className={`w-full bg-black/50 border ${loginError ? 'border-red-500/50' : 'border-white/5'} rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-neutral-800 focus:border-[#D4AF37] focus:outline-none transition-all text-sm tracking-widest`}
+                        value={adminPassword}
+                        onChange={e => {
+                          setAdminPassword(e.target.value);
+                          setLoginError(false);
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
+
+                {loginError && (
+                  <p className="text-center text-red-500 text-[9px] font-bold uppercase tracking-widest animate-bounce">
+                    Acesso Negado: Dados incorretos
+                  </p>
+                )}
+
                 <button 
                   type="submit" 
-                  disabled={isLoggingIn}
-                  className="w-full bg-white text-black font-black py-5 rounded-2xl shadow-xl uppercase text-[10px] tracking-widest hover:bg-[#D4AF37] active:scale-95 transition-all flex items-center justify-center"
+                  disabled={isLoggingIn || !adminUser || !adminPassword}
+                  className="w-full bg-white text-black font-black py-5 rounded-2xl shadow-xl uppercase text-[10px] tracking-widest hover:bg-[#D4AF37] active:scale-95 transition-all flex items-center justify-center disabled:opacity-30 disabled:grayscale"
                 >
                   {isLoggingIn ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" /> : 'Entrar no Sistema'}
                 </button>
@@ -207,13 +248,8 @@ const App: React.FC = () => {
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div>
-                <div className="relative flex justify-center text-[8px] uppercase font-black text-neutral-700 tracking-[0.3em] bg-[#121212] px-4">Ou</div>
+                <div className="relative flex justify-center text-[8px] uppercase font-black text-neutral-700 tracking-[0.3em] bg-[#121212] px-4">Segurança Borel</div>
               </div>
-
-              <button className="w-full bg-black border border-white/5 text-neutral-400 font-bold py-4 rounded-2xl text-[9px] uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-white/5 hover:text-white transition-all">
-                <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1V11.1Z"/></svg>
-                Entrar com Google
-              </button>
             </div>
 
             <button 

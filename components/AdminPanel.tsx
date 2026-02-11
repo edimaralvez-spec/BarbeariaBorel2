@@ -1,7 +1,7 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { storageService } from '../services/storageService';
-import { ICONS, SERVICES, BARBERS, BUSINESS_INFO } from '../constants';
+import { ICONS, SERVICES, BARBERS } from '../constants';
 import { Appointment } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { GoogleGenAI } from "@google/genai";
@@ -21,8 +21,18 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [selectedClient, setSelectedClient] = useState<ClientSummary | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  
-  const appointments = storageService.getAppointments();
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Conectar ao Firebase ao montar o componente
+  useEffect(() => {
+    setIsLoading(true);
+    const unsubscribe = storageService.subscribeToAppointments((data) => {
+      setAppointments(data);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const generateCaptions = async () => {
     setIsGenerating(true);
@@ -122,12 +132,12 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex flex-col">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            {ICONS.Dashboard} Painel de Controle
+          <h2 className="text-xl font-bold flex items-center gap-2 text-premium-gold italic">
+            {ICONS.Dashboard} Borel Admin
           </h2>
           <div className="flex items-center gap-1.5 text-[9px] text-green-500 font-bold uppercase tracking-widest mt-0.5">
             <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-            Cloud Sync Active
+            Real-time DB Active
           </div>
         </div>
         <button 
@@ -138,7 +148,6 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         </button>
       </div>
 
-      {/* Main Tabs */}
       <div className="flex border-b border-white/5">
         {(['dashboard', 'clientes', 'marketing'] as const).map(tab => (
           <button 
@@ -151,241 +160,233 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         ))}
       </div>
 
-      {activeTab === 'dashboard' && (
-        <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5">
-              <p className="text-xs text-neutral-400 uppercase tracking-tighter">Agendamentos</p>
-              <p className="text-2xl font-bold text-[#D4AF37]">{stats.total}</p>
-            </div>
-            <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5">
-              <p className="text-xs text-neutral-400 uppercase tracking-tighter">Receita Estimada</p>
-              <p className="text-2xl font-bold text-green-500">R$ {stats.revenue}</p>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="flex gap-2 p-1 bg-black/40 rounded-lg">
-            {(['hoje', 'semana', 'mes'] as const).map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`flex-1 py-2 text-xs font-bold rounded-md transition-all uppercase ${
-                  filter === f ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20' : 'text-neutral-500'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
-          {/* Chart */}
-          <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5 h-64">
-            <p className="text-xs font-bold mb-4 flex items-center gap-2 text-neutral-400 uppercase tracking-widest">
-              {ICONS.Reports} Serviços mais procurados
-            </p>
-            <ResponsiveContainer width="100%" height="80%">
-              <BarChart data={chartData}>
-                <XAxis dataKey="name" stroke="#555" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis hide />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#121212', border: '1px solid #333', borderRadius: '8px', fontSize: '12px' }}
-                  itemStyle={{ color: '#D4AF37' }}
-                />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS_CHART[index % COLORS_CHART.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Appointment List */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold text-neutral-400 uppercase">Agenda do Período</h3>
-            {filteredAppointments.length === 0 ? (
-              <div className="py-10 text-center text-neutral-600 italic">
-                Nenhum agendamento para este período.
-              </div>
-            ) : (
-              filteredAppointments.map(app => {
-                const service = SERVICES.find(s => s.id === app.serviceId);
-                const barber = BARBERS.find(b => b.id === app.barberId);
-                return (
-                  <div key={app.id} className="bg-[#121212] p-4 rounded-xl border border-white/5 group hover:border-[#D4AF37]/30 transition-all">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="font-bold text-white">{app.clientName}</h4>
-                        <p className="text-xs text-neutral-500">{app.clientPhone}</p>
-                      </div>
-                      <div className="bg-[#D4AF37]/10 text-[#D4AF37] text-[10px] font-bold px-2 py-1 rounded">
-                        {app.time}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/5">
-                      <div className="flex items-center gap-1 text-[11px] text-neutral-400">
-                        <span className="text-[#D4AF37]">{ICONS.Scissors}</span>
-                        {service?.name}
-                      </div>
-                      <div className="flex items-center gap-1 text-[11px] text-neutral-400">
-                        <span className="text-neutral-500">{ICONS.User}</span>
-                        {barber?.name.split(' ')[0]}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+      {isLoading ? (
+        <div className="py-20 flex flex-col items-center justify-center gap-4">
+          <div className="w-8 h-8 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[10px] uppercase font-bold text-neutral-600 tracking-widest">Sincronizando Nuvem...</p>
         </div>
-      )}
-
-      {activeTab === 'clientes' && !selectedClient && (
-        <div className="space-y-4 animate-in fade-in duration-300">
-          <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-widest">Base de Clientes</h3>
-          {clientsList.length === 0 ? (
-            <div className="py-20 text-center text-neutral-600 italic">
-              Ainda não há clientes registrados.
-            </div>
-          ) : (
-            clientsList.map((client, idx) => (
-              <div 
-                key={idx}
-                className="bg-[#121212] p-4 rounded-xl border border-white/5 flex items-center justify-between hover:border-[#D4AF37]/30 transition-all cursor-pointer group"
-                onClick={() => setSelectedClient(client)}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] font-bold">
-                    {client.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white group-hover:text-[#D4AF37] transition-colors">{client.name}</h4>
-                    <p className="text-[10px] text-neutral-500 uppercase font-bold tracking-tighter">
-                      {client.totalAppointments} visita{client.totalAppointments > 1 ? 's' : ''} • Última em {new Date(client.lastVisit).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
+      ) : (
+        <>
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5">
+                  <p className="text-xs text-neutral-400 uppercase tracking-tighter">Agendamentos</p>
+                  <p className="text-2xl font-bold text-[#D4AF37]">{stats.total}</p>
                 </div>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openWhatsApp(client.phone);
-                  }}
-                  className="p-2 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500 transition-all hover:text-white"
-                >
-                  {ICONS.WhatsApp}
-                </button>
+                <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5">
+                  <p className="text-xs text-neutral-400 uppercase tracking-tighter">Receita Estimada</p>
+                  <p className="text-2xl font-bold text-green-500">R$ {stats.revenue}</p>
+                </div>
               </div>
-            ))
+
+              <div className="flex gap-2 p-1 bg-black/40 rounded-lg">
+                {(['hoje', 'semana', 'mes'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`flex-1 py-2 text-xs font-bold rounded-md transition-all uppercase ${
+                      filter === f ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20' : 'text-neutral-500'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+
+              <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5 h-64">
+                <p className="text-xs font-bold mb-4 flex items-center gap-2 text-neutral-400 uppercase tracking-widest">
+                  {ICONS.Reports} Fluxo de Serviços
+                </p>
+                <ResponsiveContainer width="100%" height="80%">
+                  <BarChart data={chartData}>
+                    <XAxis dataKey="name" stroke="#555" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis hide />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#121212', border: '1px solid #333', borderRadius: '8px', fontSize: '12px' }}
+                      itemStyle={{ color: '#D4AF37' }}
+                    />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS_CHART[index % COLORS_CHART.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-neutral-400 uppercase">Agenda Digital</h3>
+                {filteredAppointments.length === 0 ? (
+                  <div className="py-10 text-center text-neutral-600 italic text-sm">
+                    Nenhum agendamento sincronizado para este período.
+                  </div>
+                ) : (
+                  filteredAppointments.map(app => {
+                    const service = SERVICES.find(s => s.id === app.serviceId);
+                    const barber = BARBERS.find(b => b.id === app.barberId);
+                    return (
+                      <div key={app.id} className="bg-[#121212] p-4 rounded-xl border border-white/5 group hover:border-[#D4AF37]/30 transition-all">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-bold text-white">{app.clientName}</h4>
+                            <p className="text-xs text-neutral-500">{app.clientPhone}</p>
+                          </div>
+                          <div className="bg-[#D4AF37]/10 text-[#D4AF37] text-[10px] font-bold px-2 py-1 rounded">
+                            {app.time}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/5">
+                          <div className="flex items-center gap-1 text-[11px] text-neutral-400">
+                            <span className="text-[#D4AF37]">{ICONS.Scissors}</span>
+                            {service?.name}
+                          </div>
+                          <div className="flex items-center gap-1 text-[11px] text-neutral-400">
+                            <span className="text-neutral-500">{ICONS.User}</span>
+                            {barber?.name}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           )}
-        </div>
-      )}
 
-      {activeTab === 'clientes' && selectedClient && (
-        <div className="animate-in slide-in-from-right duration-300 space-y-6">
-          <button 
-            onClick={() => setSelectedClient(null)}
-            className="flex items-center gap-2 text-[10px] font-bold text-neutral-500 uppercase tracking-widest hover:text-white"
-          >
-            ← Voltar para a Lista
-          </button>
-          
-          <div className="bg-[#1A1A1A] p-6 rounded-2xl border border-white/5 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] font-bold text-2xl mx-auto">
-              {selectedClient.name.charAt(0)}
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white">{selectedClient.name}</h3>
-              <p className="text-sm text-neutral-500">{selectedClient.phone}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-black/40 p-3 rounded-xl border border-white/5">
-                <p className="text-[10px] text-neutral-500 uppercase font-bold">Total Gasto</p>
-                <p className="text-lg font-bold text-green-500">R$ {selectedClient.totalSpent}</p>
-              </div>
-              <div className="bg-black/40 p-3 rounded-xl border border-white/5">
-                <p className="text-[10px] text-neutral-500 uppercase font-bold">Visitas</p>
-                <p className="text-lg font-bold text-[#D4AF37]">{selectedClient.totalAppointments}</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => openWhatsApp(selectedClient.phone)}
-              className="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition-all"
-            >
-              {ICONS.WhatsApp} Entrar em contato
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <h4 className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em]">Histórico de Atendimentos</h4>
-            {selectedClient.history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((h, i) => {
-              const service = SERVICES.find(s => s.id === h.serviceId);
-              return (
-                <div key={i} className="bg-[#121212] p-4 rounded-xl border border-white/5 flex justify-between items-center">
-                  <div>
-                    <p className="text-xs font-bold text-white">{service?.name}</p>
-                    <p className="text-[10px] text-neutral-500">{new Date(h.date).toLocaleDateString('pt-BR')} às {h.time}</p>
-                  </div>
-                  <span className="text-xs font-bold text-[#D4AF37]">R$ {service?.price}</span>
+          {activeTab === 'clientes' && !selectedClient && (
+            <div className="space-y-4 animate-in fade-in duration-300">
+              <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-widest">Base de Dados de Clientes</h3>
+              {clientsList.length === 0 ? (
+                <div className="py-20 text-center text-neutral-600 italic">
+                  Aguardando o primeiro agendamento na nuvem.
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+              ) : (
+                clientsList.map((client, idx) => (
+                  <div 
+                    key={idx}
+                    className="bg-[#121212] p-4 rounded-xl border border-white/5 flex items-center justify-between hover:border-[#D4AF37]/30 transition-all cursor-pointer group"
+                    onClick={() => setSelectedClient(client)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] font-bold">
+                        {client.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-white group-hover:text-[#D4AF37] transition-colors">{client.name}</h4>
+                        <p className="text-[10px] text-neutral-500 uppercase font-bold tracking-tighter">
+                          {client.totalAppointments} visita{client.totalAppointments > 1 ? 's' : ''} • Última em {new Date(client.lastVisit).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openWhatsApp(client.phone);
+                      }}
+                      className="p-2 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500 transition-all hover:text-white"
+                    >
+                      {ICONS.WhatsApp}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
 
-      {activeTab === 'marketing' && (
-        <div className="space-y-6 animate-in fade-in duration-300">
-          <div className="bg-gradient-to-br from-[#1A1A1A] to-[#0C0C0C] p-6 rounded-3xl border border-[#D4AF37]/20 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-            <div className="relative z-10 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#D4AF37] rounded-xl flex items-center justify-center text-black">
-                  {ICONS.Zap}
+          {activeTab === 'clientes' && selectedClient && (
+            <div className="animate-in slide-in-from-right duration-300 space-y-6">
+              <button 
+                onClick={() => setSelectedClient(null)}
+                className="flex items-center gap-2 text-[10px] font-bold text-neutral-500 uppercase tracking-widest hover:text-white"
+              >
+                ← Voltar para a Nuvem
+              </button>
+              
+              <div className="bg-[#1A1A1A] p-6 rounded-2xl border border-white/5 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] font-bold text-2xl mx-auto">
+                  {selectedClient.name.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="font-display font-bold text-white text-lg">Marketing Borel AI</h3>
-                  <p className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-widest">Powered by Gemini 3.0</p>
+                  <h3 className="text-xl font-bold text-white">{selectedClient.name}</h3>
+                  <p className="text-sm text-neutral-500">{selectedClient.phone}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                    <p className="text-[10px] text-neutral-500 uppercase font-bold">LTV (Faturamento)</p>
+                    <p className="text-lg font-bold text-green-500">R$ {selectedClient.totalSpent}</p>
+                  </div>
+                  <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                    <p className="text-[10px] text-neutral-500 uppercase font-bold">Visitas</p>
+                    <p className="text-lg font-bold text-[#D4AF37]">{selectedClient.totalAppointments}</p>
+                  </div>
                 </div>
               </div>
-              <p className="text-xs text-neutral-400 leading-relaxed">
-                Gere legendas criativas e exclusivas para o seu Instagram com foco em Cerejeiras-RO utilizando nossa inteligência artificial.
-              </p>
-              <button 
-                onClick={generateCaptions}
-                disabled={isGenerating}
-                className="w-full bg-white text-black font-black py-4 rounded-2xl uppercase text-[10px] tracking-widest hover:bg-[#D4AF37] transition-all disabled:opacity-50"
-              >
-                {isGenerating ? 'Analisando tendências...' : 'Gerar Novas Legendas'}
-              </button>
-            </div>
-          </div>
 
-          <div className="space-y-4">
-            <h4 className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em] px-1">Sugestões Estratégicas</h4>
-            {aiSuggestions.length === 0 ? (
-              <div className="p-10 text-center text-neutral-700 italic text-sm border-2 border-dashed border-white/5 rounded-3xl">
-                Clique no botão acima para começar a sua campanha.
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em]">Registro de Histórico</h4>
+                {selectedClient.history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((h, i) => {
+                  const service = SERVICES.find(s => s.id === h.serviceId);
+                  return (
+                    <div key={i} className="bg-[#121212] p-4 rounded-xl border border-white/5 flex justify-between items-center">
+                      <div>
+                        <p className="text-xs font-bold text-white">{service?.name}</p>
+                        <p className="text-[10px] text-neutral-500">{new Date(h.date).toLocaleDateString('pt-BR')} às {h.time}</p>
+                      </div>
+                      <span className="text-xs font-bold text-[#D4AF37]">R$ {service?.price}</span>
+                    </div>
+                  );
+                })}
               </div>
-            ) : (
-              aiSuggestions.map((suggestion, idx) => (
-                <div key={idx} className="bg-[#121212] p-5 rounded-2xl border border-white/5 space-y-3 group hover:border-[#D4AF37]/30 transition-all">
-                  <p className="text-sm text-neutral-300 leading-relaxed italic">"{suggestion}"</p>
+            </div>
+          )}
+
+          {activeTab === 'marketing' && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="bg-gradient-to-br from-[#1A1A1A] to-[#0C0C0C] p-6 rounded-3xl border border-[#D4AF37]/20 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                <div className="relative z-10 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#D4AF37] rounded-xl flex items-center justify-center text-black">
+                      {ICONS.Zap}
+                    </div>
+                    <div>
+                      <h3 className="font-display font-bold text-white text-lg">Marketing Borel AI</h3>
+                      <p className="text-[10px] text-[#D4AF37] font-bold uppercase tracking-widest">IA Generativa Ativa</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-neutral-400 leading-relaxed">
+                    Legendas estratégicas geradas para atrair o público de Cerejeiras-RO.
+                  </p>
                   <button 
-                    onClick={() => {
-                      navigator.clipboard.writeText(suggestion);
-                      alert('Legenda copiada!');
-                    }}
-                    className="flex items-center gap-2 text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest group-hover:underline"
+                    onClick={generateCaptions}
+                    disabled={isGenerating}
+                    className="w-full bg-white text-black font-black py-4 rounded-2xl uppercase text-[10px] tracking-widest hover:bg-[#D4AF37] transition-all disabled:opacity-50"
                   >
-                    Copiar para Instagram
+                    {isGenerating ? 'Processando...' : 'Gerar Novas Legendas'}
                   </button>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
+              </div>
+
+              <div className="space-y-4">
+                {aiSuggestions.map((suggestion, idx) => (
+                  <div key={idx} className="bg-[#121212] p-5 rounded-2xl border border-white/5 space-y-3 group hover:border-[#D4AF37]/30 transition-all">
+                    <p className="text-sm text-neutral-300 leading-relaxed italic">"{suggestion}"</p>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(suggestion);
+                        alert('Copiado para a área de transferência!');
+                      }}
+                      className="flex items-center gap-2 text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest group-hover:underline"
+                    >
+                      Copiar Conteúdo
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

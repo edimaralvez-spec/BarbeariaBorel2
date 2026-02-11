@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { SERVICES, BARBERS, ICONS } from '../constants';
-import { Appointment, Service, Barber } from '../types';
+import { Appointment } from '../types';
 import { storageService } from '../services/storageService';
 import { whatsappService } from '../services/whatsappService';
 
@@ -23,30 +23,34 @@ const BookingFlow: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
 
   const handleBooking = async () => {
     setLoading(true);
-    const newAppointment: Appointment = {
-      id: Math.random().toString(36).substr(2, 9),
-      clientId: 'temp-user',
-      clientName: formData.name,
-      clientPhone: formData.phone,
-      serviceId: formData.serviceId,
-      barberId: formData.barberId,
-      date: formData.date,
-      time: formData.time,
-      status: 'confirmado',
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const newAppointment: Appointment = {
+        id: '', // Será preenchido pelo Firebase
+        clientId: 'cloud-user',
+        clientName: formData.name,
+        clientPhone: formData.phone,
+        serviceId: formData.serviceId,
+        barberId: formData.barberId,
+        date: formData.date,
+        time: formData.time,
+        status: 'confirmado',
+        createdAt: new Date().toISOString()
+      };
 
-    // Save to local storage
-    storageService.saveAppointment(newAppointment);
+      // Salva no Firebase Realtime Database
+      const firebaseId = await storageService.saveAppointment(newAppointment);
+      newAppointment.id = firebaseId;
 
-    // Simulated API call delay
-    await new Promise(r => setTimeout(r, 1500));
-    
-    // WhatsApp notifications (Simulated by opening link)
-    whatsappService.sendNewBookingNotification(newAppointment);
-    
-    setLoading(false);
-    onComplete();
+      // Dispara notificações após confirmação do banco
+      whatsappService.sendNewBookingNotification(newAppointment);
+      
+      onComplete();
+    } catch (error) {
+      console.error("Erro ao agendar:", error);
+      alert("Houve um erro ao salvar seu agendamento. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const selectedService = SERVICES.find(s => s.id === formData.serviceId);
@@ -55,7 +59,6 @@ const BookingFlow: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* Progress Indicator */}
       <div className="flex items-center gap-2 mb-8">
         {[1, 2, 3, 4].map(s => (
           <div 
@@ -65,7 +68,6 @@ const BookingFlow: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
         ))}
       </div>
 
-      {/* Step 1: Identification */}
       {step === 1 && (
         <div className="space-y-6">
           <div className="space-y-2">
@@ -104,7 +106,6 @@ const BookingFlow: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
         </div>
       )}
 
-      {/* Step 2: Service Selection */}
       {step === 2 && (
         <div className="space-y-6">
           <div className="space-y-2">
@@ -139,7 +140,6 @@ const BookingFlow: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
         </div>
       )}
 
-      {/* Step 3: Barber Selection */}
       {step === 3 && (
         <div className="space-y-6">
           <div className="space-y-2">
@@ -172,7 +172,6 @@ const BookingFlow: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
         </div>
       )}
 
-      {/* Step 4: Date and Time */}
       {step === 4 && (
         <div className="space-y-6">
           <div className="space-y-2">
